@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Zombie rush/Zombie rush.vcxproj" Id="8920d799-8411-4030-b722-a811191120bd" />
+</Solution>
