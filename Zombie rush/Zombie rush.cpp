@@ -138,13 +138,15 @@ ID2D1Bitmap* bmpShot[4]{ nullptr };
 
 /////////////////////////////////////////////////////////
 
+contlib::RAND RandIt{};
+
 contlib::BAG<zombie::FIELD*>vSands;
 zombie::BACKGROUND Ocean(background::ocean);
 zombie::BACKGROUND Intro(background::intro);
 zombie::BACKGROUND Pause(background::pause);
 
-
-
+contlib::BAG<zombie::CREATURE*>vGoods;
+contlib::BAG<zombie::CREATURE*>vEvils;
 
 
 
@@ -262,7 +264,7 @@ void InitGame()
 	wcscpy_s(current_player, L"TARLYO");
 	name_set = false;
 
-	distance = 300;
+	distance = 300.0f;
 	castle_lifes = 250;
 	field_moving = true;
 
@@ -271,8 +273,30 @@ void InitGame()
 
 	if (!vSands.empty())for (int i = 0; i < vSands.size(); ++i)FreeMem(&vSands[i]);
 	vSands.clear();
-	
 	for (float ty = -700.0f; ty <= 700.0f; ty += 700.0f)vSands.push_back(zombie::FIELD::create(ty));
+
+	if (!vGoods.empty())for (int i = 0; i < vGoods.size(); ++i)FreeMem(&vGoods[i]);
+	vGoods.clear();
+
+	float good_x{ 150.0f + RandIt(0.0f, 20.0f) };
+	float good_y{ ground - 60.0f };
+
+	for (float row = 0; row < 3.0f; ++row)
+	{
+		for (float col = 0; col < 8.0f; ++col)
+		{
+			good_x += 40.0f + RandIt(0.0f, 20.0f);
+			vGoods.push_back(zombie::CREATURE::create(creature::warrior, good_x, good_y));
+		}
+
+		good_x = 150.0f + RandIt(0.0f, 20.0f);
+		good_y -= 50.0f;
+	}
+
+	if (!vEvils.empty())for (int i = 0; i < vEvils.size(); ++i)FreeMem(&vEvils[i]);
+	vEvils.clear();
+	
+	
 	
 }
 void LevelUp()
@@ -280,7 +304,23 @@ void LevelUp()
 	if (!level_skipped)score += (int)(10 * level);
 
 	++level;
+	distance = 300.0f + 10.0f * level;
+	castle_lifes = 250;
+	field_moving = true;
 
+	castle_demolished = false;
+	level_skipped = false;
+
+	if (!vSands.empty())for (int i = 0; i < vSands.size(); ++i)FreeMem(&vSands[i]);
+	vSands.clear();
+
+	if (!vGoods.empty())for (int i = 0; i < vGoods.size(); ++i)FreeMem(&vGoods[i]);
+	vGoods.clear();
+
+	if (!vEvils.empty())for (int i = 0; i < vEvils.size(); ++i)FreeMem(&vEvils[i]);
+	vEvils.clear();
+
+	for (float ty = -700.0f; ty <= 700.0f; ty += 700.0f)vSands.push_back(zombie::FIELD::create(ty));
 }
 
 INT_PTR CALLBACK DlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
@@ -1033,12 +1073,57 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			else Draw->DrawTextW(L"ПОМОЩ ЗА ИГРАТА", 16, nrmText, b3TxtRect, hgltBrush);
 		}
 
-		
-
-		
-
 	//////////////////////////////////////////////////////////////////
 	
+		if (!vGoods.empty())
+		{
+			for (int i = 0; i < vGoods.size(); ++i)
+			{
+				if (vGoods[i]->lifes > 0)
+				{
+					int aframe = vGoods[i]->get_frame();
+
+					switch (vGoods[i]->get_type())
+					{
+					case creature::warrior:
+						Draw->DrawBitmap(bmpVitWarrior[aframe], Resizer(bmpVitWarrior[aframe],
+							vGoods[i]->start.x, vGoods[i]->start.y));
+						break;
+
+					case creature::mage:
+						Draw->DrawBitmap(bmpVitMage[aframe], Resizer(bmpVitMage[aframe],
+							vGoods[i]->start.x, vGoods[i]->start.y));
+					}
+				}
+				else
+				{
+					int aframe = vGoods[i]->get_frame();
+
+					if (aframe < 0)
+					{
+						vGoods.erase(i);
+						break;
+					}
+					else
+					{
+						switch (vGoods[i]->get_type())
+						{
+						case creature::warrior:
+							Draw->DrawBitmap(bmpFallWarrior[aframe], Resizer(bmpFallWarrior[aframe],
+								vGoods[i]->start.x, vGoods[i]->start.y));
+							break;
+
+						case creature::mage:
+							Draw->DrawBitmap(bmpFallMage[aframe], Resizer(bmpFallMage[aframe],
+								vGoods[i]->start.x, vGoods[i]->start.y));
+						}
+					}
+				}
+			}
+		}
+
+
+
 	// END DRAW ************************************
 
 		Draw->EndDraw();
