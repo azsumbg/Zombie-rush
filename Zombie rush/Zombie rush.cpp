@@ -58,13 +58,13 @@ POINT cur_pos{};
 
 UINT bTimer{};
 
-D2D1_RECT_F b1Rect{ 50.0f, 10.0f, scr_width / 3.0f - 50.0f, 40.0f };
-D2D1_RECT_F b2Rect{ scr_width / 3.0f + 20.0f, 10.0f, scr_width * 2.0f / 3.0f - 50.0f , 40.0f };
-D2D1_RECT_F b3Rect{ scr_width * 2.0f / 3.0f + 20.0f, 10.0f, scr_width - 50.0f , 40.0f };
+D2D1_RECT_F b1Rect{ 20.0f, 10.0f, scr_width / 3.0f - 20.0f, 40.0f };
+D2D1_RECT_F b2Rect{ scr_width / 3.0f + 20.0f, 10.0f, scr_width * 2.0f / 3.0f - 20.0f , 40.0f };
+D2D1_RECT_F b3Rect{ scr_width * 2.0f / 3.0f + 20.0f, 10.0f, scr_width - 20.0f , 40.0f };
 
-D2D1_RECT_F b1TxtRect{ 70.0f, 15.0f, scr_width / 3.0f - 50.0f, 40.0f };
-D2D1_RECT_F b2TxtRect{ scr_width / 3.0f + 35.0f, 15.0f, scr_width * 2.0f / 3.0f - 50.0f , 40.0f };
-D2D1_RECT_F b3TxtRect{ scr_width * 2.0f / 3.0f + 30.0f, 15.0f, scr_width - 50.0f , 40.0f };
+D2D1_RECT_F b1TxtRect{ 40.0f, 15.0f, scr_width / 3.0f - 50.0f, 40.0f };
+D2D1_RECT_F b2TxtRect{ scr_width / 3.0f + 35.0f, 15.0f, scr_width * 2.0f / 3.0f - 20.0f , 40.0f };
+D2D1_RECT_F b3TxtRect{ scr_width * 2.0f / 3.0f + 30.0f, 15.0f, scr_width - 20.0f , 40.0f };
 
 bool pause = false;
 bool sound = true;
@@ -89,6 +89,7 @@ float level{ 1.0f };
 int score{ 0 };
 
 float distance{};
+bool field_moving = true;
 
 ID2D1Factory* iFactory{ nullptr };
 ID2D1HwndRenderTarget* Draw{ nullptr };
@@ -137,10 +138,10 @@ ID2D1Bitmap* bmpShot[4]{ nullptr };
 
 /////////////////////////////////////////////////////////
 
-contlib::BAG<zombie::BACKGROUND*>vSands;
+contlib::BAG<zombie::FIELD*>vSands;
 zombie::BACKGROUND Ocean(background::ocean);
 zombie::BACKGROUND Intro(background::intro);
-
+zombie::BACKGROUND Pause(background::pause);
 
 
 
@@ -263,13 +264,19 @@ void InitGame()
 
 	distance = 300;
 	castle_lifes = 250;
+	field_moving = true;
 
 	castle_demolished = false;
 	level_skipped = false;
+
+	if (!vSands.empty())for (int i = 0; i < vSands.size(); ++i)FreeMem(&vSands[i]);
+	vSands.clear();
+	vSands.push_back(zombie::FIELD::create(-650.0f));
+	vSands.push_back(zombie::FIELD::create(50.0f));
 }
 void LevelUp()
 {
-	if (!level_skipped)score += 10 * level;
+	if (!level_skipped)score += (int)(10 * level);
 
 	++level;
 
@@ -514,7 +521,7 @@ void CreateResources()
 	}
 
 	int win_x = (int)(GetSystemMetrics(SM_CXSCREEN) / 2 - (int)(scr_width / 2.0f));
-	int win_y = 50;
+	int win_y = 10;
 
 	if (GetSystemMetrics(SM_CXSCREEN) < win_x + (int)(scr_width)
 		|| GetSystemMetrics(SM_CYSCREEN) < win_y + (int)(scr_height))ErrExit(eScreen);
@@ -526,7 +533,7 @@ void CreateResources()
 	outCursor = LoadCursorFromFileW(L".\\res\\out.ani");
 	if (!mainCursor || !outCursor)ErrExit(eCursor);
 
-	bWinClass.lpszMenuName = bWinClassName;
+	bWinClass.lpszClassName = bWinClassName;
 	bWinClass.hInstance = bIns;
 	bWinClass.lpfnWndProc = &WinProc;
 	bWinClass.hbrBackground = CreateSolidBrush(RGB(10, 10, 10));
@@ -572,7 +579,7 @@ void CreateResources()
 			scale_y = DIPDims.height / (DPIRect.bottom - DPIRect.top);
 
 			hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Maroon), &statBrush);
-			hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Chartreuse), &txtBrush);
+			hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::DarkBlue), &txtBrush);
 			hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Orange), &hgltBrush);
 			hr = Draw->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::IndianRed), &inactBrush);
 
@@ -899,7 +906,7 @@ void CreateResources()
 		if (iWriteFactory)
 		{
 			hr = iWriteFactory->CreateTextFormat(L"Segoe script", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_NORMAL,
-				DWRITE_FONT_STRETCH_NORMAL, 16.0f, L"", &nrmText);
+				DWRITE_FONT_STRETCH_NORMAL, 14.0f, L"", &nrmText);
 			hr = iWriteFactory->CreateTextFormat(L"Segoe script", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_NORMAL,
 				DWRITE_FONT_STRETCH_NORMAL, 32.0f, L"", &midText);
 			hr = iWriteFactory->CreateTextFormat(L"Segoe script", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_NORMAL,
@@ -925,7 +932,6 @@ void CreateResources()
 	PlaySound(L".\\res\\snd\\boom.wav", NULL, SND_SYNC);
 }
 
-
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
 {
 	bIns = hInstance;
@@ -939,11 +945,89 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 
 
+	while (bMsg.message != WM_QUIT)
+	{
+		if ((bRet = PeekMessage(&bMsg, NULL, NULL, NULL, PM_REMOVE)) != 0)
+		{
+			if (bRet == -1)ErrExit(eMsg);
 
+			TranslateMessage(&bMsg);
+			DispatchMessage(&bMsg);
+		}
 
+		if (pause)
+		{
+			if (show_help)continue;
 
+			if (bigText && txtBrush)
+			{
+				Draw->BeginDraw();
+				Draw->DrawBitmap(bmpPause[Pause.get_frame()], FULL_SCREEN);
+				Draw->DrawTextW(L"ПАУЗА", 6, bigText, D2D1::RectF(scr_width / 2.0f - 100.0f, scr_height / 2.0f - 50.0f,
+					scr_width, scr_height), txtBrush);
+				Draw->EndDraw();
+			}
+	
+			continue;
+		}
+	
+	/////////////////////////////////////////////////////////////
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	// DRAW THINGS ***************************************************
 
+		Draw->BeginDraw();
 
+		Draw->DrawBitmap(bmpOcean[Ocean.get_frame()], GAME_SCREEN);
+
+		if (!vSands.empty())
+			for (int i = 0; i < vSands.size(); ++i)Draw->DrawBitmap(bmpSand, vSands[i]->rect);
+
+		if (nrmText && inactBrush && statBrush && txtBrush && hgltBrush && b1BckgBrush && b2BckgBrush && b3BckgBrush)
+		{
+			Draw->FillRectangle(MENU_BAR, statBrush);
+			Draw->FillRectangle(STATUS_BAR, statBrush);
+
+			Draw->FillRoundedRectangle(D2D1::RoundedRect(b1Rect, 25.0f, 15.0f), b1BckgBrush);
+			Draw->FillRoundedRectangle(D2D1::RoundedRect(b2Rect, 25.0f, 15.0f), b2BckgBrush);
+			Draw->FillRoundedRectangle(D2D1::RoundedRect(b3Rect, 25.0f, 15.0f), b3BckgBrush);
+
+			if (name_set)Draw->DrawTextW(L"ИМЕ НА ВЛАДЕТЕЛ", 16, nrmText, b1TxtRect, inactBrush);
+			else
+			{
+				if (!b1Hglt)Draw->DrawTextW(L"ИМЕ НА ВЛАДЕТЕЛ", 16, nrmText, b1TxtRect, txtBrush);
+				else Draw->DrawTextW(L"ИМЕ НА ВЛАДЕТЕЛ", 16, nrmText, b1TxtRect, hgltBrush);
+			}
+			if (!b2Hglt)Draw->DrawTextW(L"ЗВУЦИ ON / OFF", 15, nrmText, b2TxtRect, txtBrush);
+			else Draw->DrawTextW(L"ЗВУЦИ ON / OFF", 15, nrmText, b2TxtRect, hgltBrush);
+			if (!b3Hglt)Draw->DrawTextW(L"ПОМОЩ ЗА ИГРАТА", 16, nrmText, b3TxtRect, txtBrush);
+			else Draw->DrawTextW(L"ПОМОЩ ЗА ИГРАТА", 16, nrmText, b3TxtRect, hgltBrush);
+		}
+
+		
+
+		
+
+	//////////////////////////////////////////////////////////////////
+	
+	// END DRAW ************************************
+
+		Draw->EndDraw();
+	
+	}
 
 	FreeResources();
 	std::remove(tmp_file);
