@@ -62,9 +62,9 @@ D2D1_RECT_F b1Rect{ 20.0f, 10.0f, scr_width / 3.0f - 20.0f, 40.0f };
 D2D1_RECT_F b2Rect{ scr_width / 3.0f + 20.0f, 10.0f, scr_width * 2.0f / 3.0f - 20.0f , 40.0f };
 D2D1_RECT_F b3Rect{ scr_width * 2.0f / 3.0f + 20.0f, 10.0f, scr_width - 20.0f , 40.0f };
 
-D2D1_RECT_F b1TxtRect{ 40.0f, 15.0f, scr_width / 3.0f - 50.0f, 40.0f };
-D2D1_RECT_F b2TxtRect{ scr_width / 3.0f + 35.0f, 15.0f, scr_width * 2.0f / 3.0f - 20.0f , 40.0f };
-D2D1_RECT_F b3TxtRect{ scr_width * 2.0f / 3.0f + 30.0f, 15.0f, scr_width - 20.0f , 40.0f };
+D2D1_RECT_F b1TxtRect{ 50.0f, 15.0f, scr_width / 3.0f - 50.0f, 40.0f };
+D2D1_RECT_F b2TxtRect{ scr_width / 3.0f + 60.0f, 15.0f, scr_width * 2.0f / 3.0f - 20.0f , 40.0f };
+D2D1_RECT_F b3TxtRect{ scr_width * 2.0f / 3.0f + 50.0f, 15.0f, scr_width - 20.0f , 40.0f };
 
 bool pause = false;
 bool sound = true;
@@ -271,8 +271,9 @@ void InitGame()
 
 	if (!vSands.empty())for (int i = 0; i < vSands.size(); ++i)FreeMem(&vSands[i]);
 	vSands.clear();
-	vSands.push_back(zombie::FIELD::create(-650.0f));
-	vSands.push_back(zombie::FIELD::create(50.0f));
+	
+	for (float ty = -700.0f; ty <= 700.0f; ty += 700.0f)vSands.push_back(zombie::FIELD::create(ty));
+	
 }
 void LevelUp()
 {
@@ -366,7 +367,7 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPar
 
 	case WM_TIMER:
 		if (pause)break;
-		distance--;
+		if (field_moving)--distance;
 		if (distance <= 0)LevelUp();
 		break;
 
@@ -973,10 +974,25 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	
 	/////////////////////////////////////////////////////////////
 	
+	// GAME ACTION *********************************************
 	
+		// FIELD MOVING
 	
-	
-	
+		if (!vSands.empty() && field_moving)
+		{
+			for (contlib::BAG<zombie::FIELD*>::iterator field = vSands.begin(); field < vSands.end(); ++field)
+			{
+				if (!(*field)->move(level))
+				{
+					(*field)->Release();
+					vSands.erase(field);
+
+					vSands.push_back(zombie::FIELD::create(vSands.front()->start.y - 700.0f));
+				}
+			}
+		}
+
+		///////////////
 	
 	
 	
