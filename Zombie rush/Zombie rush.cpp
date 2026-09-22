@@ -83,13 +83,12 @@ wchar_t current_player[16]{ L"TARLYO" };
 float scale_x{ 0 };
 float scale_y{ 0 };
 
-int castle_lifes{ 100 };
+int castle_lifes{ 250 };
 
 float level{ 1.0f };
 int score{ 0 };
 
 float distance{};
-
 
 ID2D1Factory* iFactory{ nullptr };
 ID2D1HwndRenderTarget* Draw{ nullptr };
@@ -134,6 +133,19 @@ ID2D1Bitmap* bmpIntro[17]{ nullptr };
 ID2D1Bitmap* bmpOcean[20]{ nullptr };
 ID2D1Bitmap* bmpPause[4]{ nullptr };
 ID2D1Bitmap* bmpShot[4]{ nullptr };
+
+/////////////////////////////////////////////////////////
+
+contlib::BAG<zombie::BACKGROUND*>vSands;
+zombie::BACKGROUND Ocean(background::ocean);
+zombie::BACKGROUND Intro(background::intro);
+
+
+
+
+
+
+
 
 /////////////////////////////////////////////////////////
 
@@ -230,10 +242,262 @@ void ErrExit(int what)
 	exit(1);
 }
 
+void GameOver()
+{
+	KillTimer(bHwnd, bTimer);
+
+	PlaySound(NULL, NULL, NULL);
+
+
+	bMsg.message = WM_QUIT;
+	bMsg.wParam = 0;
+}
+void InitGame()
+{
+	level = 1.0f;
+	score = 0;
+	wcscpy_s(current_player, L"TARLYO");
+	name_set = false;
+
+	distance = 300;
+	castle_lifes = 250;
+
+	castle_demolished = false;
+	level_skipped = false;
+}
+void LevelUp()
+{
+	if (!level_skipped)score += 10 * level;
+
+	++level;
+
+}
+
+INT_PTR CALLBACK DlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch (ReceivedMsg)
+	{
+	case WM_INITDIALOG:
+		SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)(mainIcon));
+		return true;
+
+	case WM_CLOSE:
+		EndDialog(hwnd, IDCANCEL);
+		break;
+
+	case WM_COMMAND:
+		switch (LOWORD(wParam))
+		{
+		case IDCANCEL:
+			EndDialog(hwnd, IDCANCEL);
+			break;
+
+		case IDOK:
+			if (GetDlgItemTextW(hwnd, IDC_NAME, current_player, 16) < 1)
+			{
+				wcscpy_s(current_player, L"TARLYO");
+
+				if (sound)mciSendString(L"play .\\res\\snd\\exclamation.wav", NULL, NULL, NULL);
+				MessageBox(bHwnd, L"Ха, ха, ха ! Забрави си името !", L"Забраватор !", MB_OK | MB_APPLMODAL | MB_ICONEXCLAMATION);
+
+				EndDialog(hwnd, IDCANCEL);
+				break;
+			}
+			EndDialog(hwnd, IDOK);
+			break;
+		}
+		break;
+	}
+
+	return (INT_PTR)(FALSE);
+}
+LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
+{
+	switch (ReceivedMsg)
+	{
+	case WM_CREATE:
+		if (bIns)
+		{
+			SetTimer(hwnd, bTimer, 1000, NULL);
+
+			bBar = CreateMenu();
+			bMain = CreateMenu();
+			bStore = CreateMenu();
+
+			AppendMenu(bBar, MF_POPUP, (UINT_PTR)(bMain), L"Основно меню");
+			AppendMenu(bBar, MF_POPUP, (UINT_PTR)(bStore), L"Меню за данни");
+		
+			AppendMenu(bMain, MF_STRING, mNew, L"Нова игра");
+			AppendMenu(bMain, MF_STRING, mLvl, L"Следващо ниво");
+			AppendMenu(bMain, MF_SEPARATOR, NULL, NULL);
+			AppendMenu(bMain, MF_STRING, mExit, L"Изход");
+		
+			AppendMenu(bStore, MF_STRING, mSave, L"Запази игра");
+			AppendMenu(bStore, MF_STRING, mLoad, L"Зареди игра");
+			AppendMenu(bStore, MF_SEPARATOR, NULL, NULL);
+			AppendMenu(bStore, MF_STRING, mHoF, L"Зала на славата");
+
+			SetMenu(hwnd, bBar);
+		
+			InitGame();
+		}
+		break;
+
+	case WM_CLOSE:
+		pause = true;
+		if (sound)mciSendString(L"play .\\res\\snd\\exclamation.wav", NULL, NULL, NULL);
+		if (MessageBox(hwnd, L"Ако излезеш, губиш прогреса по тази игра !\n\nНаистина ли излизаш ?",
+			L"Изход !", MB_YESNO | MB_APPLMODAL | MB_ICONQUESTION) == IDNO)
+		{
+			pause = false;
+			break;
+		}
+		GameOver();
+		break;
+
+	case WM_TIMER:
+		if (pause)break;
+		distance--;
+		if (distance <= 0)LevelUp();
+		break;
+
+	case WM_SETCURSOR:
+		GetCursorPos(&cur_pos);
+		ScreenToClient(hwnd, &cur_pos);
+		if (LOWORD(lParam) == HTCLIENT)
+		{
+			if (!in_client)
+			{
+				in_client = true;
+				pause = false;
+			}
+
+			if (cur_pos.y * scale_y <= 50)
+			{
+				if (cur_pos.x * scale_x >= b1Rect.left && cur_pos.x * scale_x <= b1Rect.right)
+				{
+					if (!b1Hglt)
+					{
+						if (sound)mciSendString(L"play .\\res\\snd\\click.wav", NULL, NULL, NULL);
+						b1Hglt = true;
+						b2Hglt = false;
+						b3Hglt = false;
+					}
+				}
+				else if (cur_pos.x * scale_x >= b2Rect.left && cur_pos.x * scale_x <= b2Rect.right)
+				{
+					if (!b2Hglt)
+					{
+						if (sound)mciSendString(L"play .\\res\\snd\\click.wav", NULL, NULL, NULL);
+						b1Hglt = false;
+						b2Hglt = true;
+						b3Hglt = false;
+					}
+				}
+				else if (cur_pos.x * scale_x >= b3Rect.left && cur_pos.x * scale_x <= b3Rect.right)
+				{
+					if (!b3Hglt)
+					{
+						if (sound)mciSendString(L"play .\\res\\snd\\click.wav", NULL, NULL, NULL);
+						b1Hglt = false;
+						b2Hglt = false;
+						b3Hglt = true;
+					}
+				}
+				else if (b1Hglt || b2Hglt || b3Hglt)
+				{
+					if (sound)mciSendString(L"play .\\res\\snd\\click.wav", NULL, NULL, NULL);
+					b1Hglt = false;
+					b2Hglt = false;
+					b3Hglt = false;
+				}
+
+				SetCursor(outCursor);
+				return true;
+			}
+			else if (b1Hglt || b2Hglt || b3Hglt)
+			{
+				if (sound)mciSendString(L"play .\\res\\snd\\click.wav", NULL, NULL, NULL);
+				b1Hglt = false;
+				b2Hglt = false;
+				b3Hglt = false;
+			}
+
+			SetCursor(mainCursor);
+
+			return true;
+		}
+		else
+		{
+			if (in_client)
+			{
+				in_client = false;
+				pause = true;
+			}
+			if (b1Hglt || b2Hglt || b3Hglt)
+			{
+				if (sound)mciSendString(L"play .\\res\\snd\\click.wav", NULL, NULL, NULL);
+				b1Hglt = false;
+				b2Hglt = false;
+				b3Hglt = false;
+			}
+		
+			SetCursor(LoadCursor(NULL, IDC_ARROW));
+
+			return true;
+		}
+		break;
+
+	case WM_COMMAND:
+		switch (LOWORD(wParam))
+		{
+		case mNew:
+			pause = true;
+			if (sound)mciSendString(L"play .\\res\\snd\\exclamation.wav", NULL, NULL, NULL);
+			if (MessageBox(hwnd, L"Ако рестартираш, губиш прогреса по тази игра !\n\nНаистина ли рестартираш ?",
+				L"Рестарт !", MB_YESNO | MB_APPLMODAL | MB_ICONQUESTION) == IDNO)
+			{
+				pause = false;
+				break;
+			}
+			InitGame();
+			break;
+
+		case mLvl:
+			pause = true;
+			if (sound)mciSendString(L"play .\\res\\snd\\exclamation.wav", NULL, NULL, NULL);
+			if (MessageBox(hwnd, L"Ако прескочиш нивото, губиш прогреса по него !\n\nНаистина ли прескачаш ?",
+				L"Прескочи ниво !", MB_YESNO | MB_APPLMODAL | MB_ICONQUESTION) == IDNO)
+			{
+				pause = false;
+				break;
+			}
+			level_skipped = true;
+			LevelUp();
+			break;
+
+		case mExit:
+			SendMessage(hwnd, WM_CLOSE, NULL, NULL);
+			break;
+
+
+		}
+		break;
 
 
 
 
+
+
+
+
+
+
+	default: return DefWindowProc(hwnd, ReceivedMsg, wParam, lParam);
+	}
+
+	return (LRESULT)(FALSE);
+}
 
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow)
