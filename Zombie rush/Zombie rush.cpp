@@ -75,7 +75,11 @@ bool b2Hglt = false;
 bool b3Hglt = false;
 
 bool name_set = false;
+
+bool castle_active = false;
 bool castle_demolished = false;
+D2D1_RECT_F CasteRect{};
+
 bool level_skipped = false;
 
 wchar_t current_player[16]{ L"TARLYO" };
@@ -265,7 +269,7 @@ void InitGame()
 
 	distance = 300.0f;
 	castle_lifes = 250;
-	
+	castle_active = false;
 	castle_demolished = false;
 	level_skipped = false;
 
@@ -325,7 +329,7 @@ void LevelUp()
 	++level;
 	distance = 300.0f + 10.0f * level;
 	castle_lifes = 250;
-	
+	castle_active = false;
 	castle_demolished = false;
 	level_skipped = false;
 
@@ -335,10 +339,49 @@ void LevelUp()
 	if (!vGoods.empty())for (int i = 0; i < vGoods.size(); ++i)FreeMem(&vGoods[i]);
 	vGoods.clear();
 
+	float good_x{ 150.0f + RandIt(0.0f, 20.0f) };
+	float good_y{ ground - 60.0f };
+
+	for (float row = 0; row < 3.0f + level; ++row)
+	{
+		for (float col = 0; col < 10.0f + level * 2.0f; ++col)
+		{
+			good_x += 20.0f + RandIt(0.0f, 20.0f);
+			vGoods.push_back(zombie::CREATURE::create(creature::warrior, good_x, good_y));
+
+			vGoods.back()->path_info(vGoods.back()->center.x, sky);
+		}
+
+		good_x = 150.0f + RandIt(0.0f, 20.0f);
+		good_y -= 40.0f;
+	}
+
+	float evil_x{ 150.0f + RandIt(0.0f, 20.0f) };
+	float evil_y{ sky + 5.0f };
+
+	for (float row = 0; row < 3.0f +level ; ++row)
+	{
+		for (float col = 0; col < 7.0f + level * 2.0f; ++col)
+		{
+			int ttype = RandIt(0, 2);
+
+			evil_x += 20.0f + RandIt(0.0f, 20.0f);
+			vEvils.push_back(zombie::CREATURE::create(static_cast<creature>(ttype), evil_x, evil_y));
+
+			vEvils.back()->path_info(vEvils.back()->center.x, ground);
+		}
+
+		evil_x = 150.0f + RandIt(0.0f, 20.0f);
+		evil_y += 30.0f;
+	}
+
 	if (!vEvils.empty())for (int i = 0; i < vEvils.size(); ++i)FreeMem(&vEvils[i]);
 	vEvils.clear();
 
 	for (float ty = -700.0f; ty <= 700.0f; ty += 700.0f)vSands.push_back(zombie::FIELD::create(ty));
+
+	if (!vShots.empty())for (int i = 0; i < vShots.size(); ++i)FreeMem(&vShots[i]);
+	vShots.clear();
 }
 
 INT_PTR CALLBACK DlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
@@ -1051,7 +1094,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	
 		// FIELD MOVING
 	
-		if (!vSands.empty())
+		if (!vSands.empty() && castle_active)
 		{
 			for (contlib::BAG<zombie::FIELD*>::iterator field = vSands.begin(); field < vSands.end(); ++field)
 			{
