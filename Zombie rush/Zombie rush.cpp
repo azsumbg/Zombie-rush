@@ -148,7 +148,7 @@ zombie::BACKGROUND Pause(background::pause);
 contlib::BAG<zombie::CREATURE*>vGoods;
 contlib::BAG<zombie::CREATURE*>vEvils;
 
-
+contlib::BAG<zombie::SHOT*>vShots;
 
 
 /////////////////////////////////////////////////////////
@@ -317,6 +317,8 @@ void InitGame()
 		evil_y += 30.0f;
 	}
 	
+	if (!vShots.empty())for (int i = 0; i < vShots.size(); ++i)FreeMem(&vShots[i]);
+	vShots.clear();
 }
 void LevelUp()
 {
@@ -1071,12 +1073,82 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			for (int i = 0; i < vEvils.size(); ++i)vEvils[i]->move(level);
 
 		}
+
+		if (vEvils.size() < 20 + (int)(level) && RandIt(0, 100) == 66)
+		{
+			float evil_x{ 150.0f + RandIt(0.0f, 300.0f) };
+			float evil_y{ sky + 5.0f };
+			int ttype = RandIt(0, 2);
+
+			vEvils.push_back(zombie::CREATURE::create(static_cast<creature>(ttype), evil_x, evil_y));
+		}
 	
+		////////////////////////////////////////////////////////
+
+		// COMBAT *********************************************
 	
+		if (!vEvils.empty() && !vGoods.empty())
+		{
+			bool killed = false;
+
+			for (contlib::BAG<zombie::CREATURE*>::iterator evil = vEvils.begin(); evil < vEvils.end(); ++evil)
+			{
+				for (contlib::BAG<zombie::CREATURE*>::iterator good = vGoods.begin(); good < vGoods.end(); ++good)
+				{
+					if (!zombie::Intersect((*good)->rect, (*evil)->rect))
+					{
+						if (contlib::Distance((*good)->center, (*evil)->center) <= 150.0f)
+						{
+							(*good)->path_info((*evil)->center.x, (*evil)->center.y);
+							(*evil)->path_info((*good)->center.x, (*good)->center.y);
+						}
+					}
+					else
+					{
+						int zombie_attack = (*evil)->attack();
+						int good_attack = (*good)->attack();
+
+						if ((*good)->lifes <= 0)continue;
+
+						if (good_attack > 0)
+						{
+							if ((*good)->get_type() == creature::mage)
+							{
+								vShots.push_back(zombie::SHOT::create((*good)->center.x, (*good)->center.y,
+									(*evil)->center.x, (*evil)->center.y));
+							}
+							else
+							{
+								(*evil)->lifes--;
+								if ((*evil)->lifes <= 0)
+								{
+									if (sound)mciSendString(L"play .\\res\\snd\\evilkilled.wav", NULL, NULL, NULL);
+									score += 10;
+									(*evil)->Release();
+									vEvils.erase(evil);
+									killed = true;
+
+									(*good)->path_info((*good)->center.x, sky);
+
+									break;
+								}
+							}
+						}
+						else if (zombie_attack > 0)
+						{
+							if (sound)mciSendString(L"play .\\res\\snd\\herokilled.wav", NULL, NULL, NULL);
+							(*good)->lifes -= zombie_attack;
+						}
+					}
+				}
+
+				if (killed)break;
+			}
+		}
 	
+
 	
-	
-	
+		///////////////////////////////////////////////////////
 	
 	
 	// DRAW THINGS ***************************************************

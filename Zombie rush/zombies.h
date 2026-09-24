@@ -172,4 +172,6 @@ namespace zombie
 	// FUNCTIONS ***************************************
 
 	D2D1_POINT_2F ZOMBIES_API find_nearest(contlib::BAG<D2D1_POINT_2F>& enemies, D2D1_RECT_F ref);
+
+	bool ZOMBIES_API Intersect(D2D1_RECT_F first, D2D1_RECT_F second);
 }
