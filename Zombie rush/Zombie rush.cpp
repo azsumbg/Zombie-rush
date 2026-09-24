@@ -1136,11 +1136,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 								{
 									if (sound)mciSendString(L"play .\\res\\snd\\evilkilled.wav", NULL, NULL, NULL);
 									score += 10;
+									
+									D2D1_RECT_F temp{ (*evil)->rect };
+
+									for (int i = 0; i < vGoods.size(); ++i)
+									{
+										if (vGoods[i]->lifes <= 0)continue;
+										
+										if (zombie::Intersect(vGoods[i]->rect, temp))
+											vGoods[i]->path_info(vGoods[i]->center.x, sky);
+									}
+									
 									(*evil)->Release();
 									vEvils.erase(evil);
 									killed = true;
-
-									(*good)->path_info((*good)->center.x, sky);
 
 									break;
 								}
