@@ -283,20 +283,39 @@ void InitGame()
 
 	for (float row = 0; row < 3.0f; ++row)
 	{
-		for (float col = 0; col < 8.0f; ++col)
+		for (float col = 0; col < 10.0f; ++col)
 		{
-			good_x += 40.0f + RandIt(0.0f, 20.0f);
+			good_x += 20.0f + RandIt(0.0f, 20.0f);
 			vGoods.push_back(zombie::CREATURE::create(creature::warrior, good_x, good_y));
+
+			vGoods.back()->path_info(vGoods.back()->center.x, sky);
 		}
 
 		good_x = 150.0f + RandIt(0.0f, 20.0f);
-		good_y -= 50.0f;
+		good_y -= 40.0f;
 	}
 
 	if (!vEvils.empty())for (int i = 0; i < vEvils.size(); ++i)FreeMem(&vEvils[i]);
 	vEvils.clear();
 	
-	
+	float evil_x{ 150.0f + RandIt(0.0f, 20.0f) };
+	float evil_y{ sky + 5.0f };
+
+	for (float row = 0; row < 3.0f; ++row)
+	{
+		for (float col = 0; col < 7.0f; ++col)
+		{
+			int ttype = RandIt(0, 2);
+
+			evil_x += 20.0f + RandIt(0.0f, 20.0f);
+			vEvils.push_back(zombie::CREATURE::create(static_cast<creature>(ttype), evil_x, evil_y));
+
+			vEvils.back()->path_info(vEvils.back()->center.x, ground);
+		}
+
+		evil_x = 150.0f + RandIt(0.0f, 20.0f);
+		evil_y += 30.0f;
+	}
 	
 }
 void LevelUp()
@@ -1034,7 +1053,24 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 		///////////////
 	
-	
+		// GOODS MOVING ***************************************
+		
+		if (!vGoods.empty())
+		{
+			for (int i = 0; i < vGoods.size(); ++i)vGoods[i]->move(level);
+
+		}
+		
+		
+		////////////////////////////////////////////////////// 
+
+		// EVILS MOVING ***************************************
+
+		if (!vEvils.empty())
+		{
+			for (int i = 0; i < vEvils.size(); ++i)vEvils[i]->move(level);
+
+		}
 	
 	
 	
@@ -1122,7 +1158,28 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			}
 		}
 
+		if (!vEvils.empty())
+		{
+			for (int i = 0; i < vEvils.size(); ++i)
+			{
+				int aframe = vEvils[i]->get_frame();
 
+				switch (vEvils[i]->get_type())
+				{
+				case creature::zombie1:
+					Draw->DrawBitmap(bmpZombie1[aframe], Resizer(bmpZombie1[aframe], vEvils[i]->start.x, vEvils[i]->start.y));
+					break;
+
+				case creature::zombie2:
+					Draw->DrawBitmap(bmpZombie2[aframe], Resizer(bmpZombie2[aframe], vEvils[i]->start.x, vEvils[i]->start.y));
+					break;
+
+				case creature::zombie3:
+					Draw->DrawBitmap(bmpZombie3[aframe], Resizer(bmpZombie3[aframe], vEvils[i]->start.x, vEvils[i]->start.y));
+					break;
+				}
+			}
+		}
 
 	// END DRAW ************************************
 
