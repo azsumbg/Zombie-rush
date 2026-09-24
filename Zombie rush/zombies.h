@@ -120,6 +120,8 @@ namespace zombie
 
 		bool move(float gear);
 
+		int get_frame();
+
 		void Release();
 
 		static SHOT* create(float sx, float sy, float ex, float ey);

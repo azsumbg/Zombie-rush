@@ -89,7 +89,6 @@ float level{ 1.0f };
 int score{ 0 };
 
 float distance{};
-bool field_moving = true;
 
 ID2D1Factory* iFactory{ nullptr };
 ID2D1HwndRenderTarget* Draw{ nullptr };
@@ -266,8 +265,7 @@ void InitGame()
 
 	distance = 300.0f;
 	castle_lifes = 250;
-	field_moving = true;
-
+	
 	castle_demolished = false;
 	level_skipped = false;
 
@@ -327,8 +325,7 @@ void LevelUp()
 	++level;
 	distance = 300.0f + 10.0f * level;
 	castle_lifes = 250;
-	field_moving = true;
-
+	
 	castle_demolished = false;
 	level_skipped = false;
 
@@ -428,7 +425,7 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPar
 
 	case WM_TIMER:
 		if (pause)break;
-		if (field_moving)--distance;
+		--distance;
 		if (distance <= 0)LevelUp();
 		break;
 
@@ -555,14 +552,29 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPar
 		}
 		break;
 
+	case WM_KEYDOWN:
+		if (!vGoods.empty())
+		{
+			switch (wParam)
+			{
+			case VK_LEFT:
+				for (int i = 0; i < vGoods.size(); ++i)vGoods[i]->path_info(150.0f, vGoods[i]->start.y);
+				break;
 
+			case VK_RIGHT:
+				for (int i = 0; i < vGoods.size(); ++i)vGoods[i]->path_info(650.0f, vGoods[i]->start.y);
+				break;
 
+			case VK_UP:
+				for (int i = 0; i < vGoods.size(); ++i)vGoods[i]->path_info(vGoods[i]->center.x, sky);
+				break;
 
-
-
-
-
-
+			case VK_DOWN:
+				for (int i = 0; i < vGoods.size(); ++i)vGoods[i]->path_info(vGoods[i]->center.x, ground);
+				break;
+			}
+		}
+		break;
 
 	default: return DefWindowProc(hwnd, ReceivedMsg, wParam, lParam);
 	}
@@ -1039,7 +1051,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	
 		// FIELD MOVING
 	
-		if (!vSands.empty() && field_moving)
+		if (!vSands.empty())
 		{
 			for (contlib::BAG<zombie::FIELD*>::iterator field = vSands.begin(); field < vSands.end(); ++field)
 			{
@@ -1074,7 +1086,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 		}
 
-		if (vEvils.size() < 20 + (int)(level) && RandIt(0, 100) == 66)
+		if (vEvils.size() < 20 + (int)(level) && RandIt(0, 70) == 66)
 		{
 			float evil_x{ 150.0f + RandIt(0.0f, 300.0f) };
 			float evil_y{ sky + 5.0f };
@@ -1146,7 +1158,51 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			}
 		}
 	
+		if (!vShots.empty())
+		{
+			for (contlib::BAG<zombie::SHOT*>::iterator shot = vShots.begin(); shot < vShots.end(); ++shot)
+			{
+				if (!(*shot)->move(level))
+				{
+					(*shot)->Release();
+					vShots.erase(shot);
+					break;
+				}
+			}
+		}
 
+		if (!vShots.empty() && !vEvils.empty())
+		{
+			bool killed = false;
+
+			for (contlib::BAG<zombie::CREATURE*>::iterator evil = vEvils.begin(); evil < vEvils.end(); ++evil)
+			{
+				for (contlib::BAG<zombie::SHOT*>::iterator shot = vShots.begin(); shot < vShots.end(); ++shot)
+				{
+					if (zombie::Intersect((*evil)->rect, (*shot)->rect))
+					{
+						(*evil)->lifes -= 10;
+
+						(*shot)->Release();
+						vShots.erase(shot);
+
+						if ((*evil)->lifes <= 0)
+						{
+							if (sound)mciSendString(L"play .\\res\\snd\\evilkilled.wav", NULL, NULL, NULL);
+							score += 10;
+							(*evil)->Release();
+							vEvils.erase(evil);
+							killed = true;
+							break;
+						}
+
+						break;
+					}
+				}
+
+				if (killed)break;
+			}
+		}
 	
 		///////////////////////////////////////////////////////
 	
@@ -1250,6 +1306,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 					Draw->DrawBitmap(bmpZombie3[aframe], Resizer(bmpZombie3[aframe], vEvils[i]->start.x, vEvils[i]->start.y));
 					break;
 				}
+			}
+		}
+
+		if (!vShots.empty())
+		{
+			for (int i = 0; i < vShots.size(); ++i)
+			{
+				int frame{ vShots[i]->get_frame() };
+
+				Draw->DrawBitmap(bmpShot[frame], Resizer(bmpShot[frame], vShots[i]->start.x, vShots[i]->start.y));
 			}
 		}
 
