@@ -26,6 +26,8 @@ constexpr D2D1_RECT_F STATUS_BAR{ 0, 750.0f, 800.0f, 800.0f };
 
 enum class background { ocean = 0, intro = 1, pause = 2 };
 enum class creature { zombie1 = 0, zombie2 = 1, zombie3 = 2, warrior = 3, mage = 4 };
+enum class portals { warrior_portal = 0, mage_portal = 1};
+
 
 namespace zombie
 {
@@ -169,6 +171,25 @@ namespace zombie
 		void Release();
 
 		static CREATURE* create(creature what, float sx, float sy);
+	};
+
+	class ZOMBIES_API PORTAL :public PROTON
+	{
+	private:
+		portals type{ portals::warrior_portal };
+		float speed{ 1.0f };
+
+		PORTAL(portals _what, float _sx, float _sy);
+
+	public:
+
+		portals get_type()const;
+
+		bool move(float gear);
+
+		void Release();
+
+		static PORTAL* create(portals what, float sx, float sy);
 	};
 
 	// FUNCTIONS ***************************************

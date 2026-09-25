@@ -153,6 +153,7 @@ contlib::BAG<zombie::CREATURE*>vEvils;
 
 contlib::BAG<zombie::SHOT*>vShots;
 
+contlib::BAG<zombie::PORTAL*>vPortals;
 
 /////////////////////////////////////////////////////////
 
@@ -321,6 +322,9 @@ void InitGame()
 	
 	if (!vShots.empty())for (int i = 0; i < vShots.size(); ++i)FreeMem(&vShots[i]);
 	vShots.clear();
+
+	if (!vPortals.empty())for (int i = 0; i < vPortals.size(); ++i)FreeMem(&vPortals[i]);
+	vPortals.clear();
 }
 void LevelUp()
 {
@@ -382,6 +386,9 @@ void LevelUp()
 
 	if (!vShots.empty())for (int i = 0; i < vShots.size(); ++i)FreeMem(&vShots[i]);
 	vShots.clear();
+
+	if (!vPortals.empty())for (int i = 0; i < vPortals.size(); ++i)FreeMem(&vPortals[i]);
+	vPortals.clear();
 }
 
 INT_PTR CALLBACK DlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
@@ -1094,7 +1101,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	
 		// FIELD MOVING
 	
-		if (!vSands.empty() && castle_active)
+		if (!vSands.empty() && !castle_active)
 		{
 			for (contlib::BAG<zombie::FIELD*>::iterator field = vSands.begin(); field < vSands.end(); ++field)
 			{
@@ -1136,6 +1143,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			int ttype = RandIt(0, 2);
 
 			vEvils.push_back(zombie::CREATURE::create(static_cast<creature>(ttype), evil_x, evil_y));
+			vEvils.back()->path_info(vEvils.back()->center.x, ground);
 		}
 	
 		////////////////////////////////////////////////////////
@@ -1256,6 +1264,85 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			}
 		}
 	
+		if (vPortals.size() < 2 && RandIt(0, 100) == 33)
+		{
+			zombie::PORTAL* temp{ zombie::PORTAL::create(static_cast<portals>(RandIt(0, 1)), RandIt(150.0f, 400.0f), -50.0f) };
+			bool ok = true;
+
+			if (!vPortals.empty())
+			{
+				for (int i = 0; i < vPortals.size(); ++i)
+				{
+					if (zombie::Intersect(vPortals[i]->rect, temp->rect))
+					{
+						ok = false;
+						break;
+					}
+				}
+			}
+			
+			if (ok)vPortals.push_back(temp);
+		}
+		
+		if (!vPortals.empty())
+		{
+			for (contlib::BAG<zombie::PORTAL*>::iterator portal = vPortals.begin(); portal < vPortals.end(); ++portal)
+			{
+				if (!(*portal)->move(level))
+				{
+					(*portal)->Release();
+					vPortals.erase(portal);
+					break;
+				}
+			}
+		}
+
+		if (!vPortals.empty() && !vGoods.empty())
+		{
+			bool killed = false;
+
+			for (contlib::BAG<zombie::PORTAL*>::iterator portal = vPortals.begin(); portal < vPortals.end(); ++portal)
+			{
+				for (int i = 0; i < vGoods.size(); ++i)
+				{
+					if (zombie::Intersect(vGoods[i]->rect, (*portal)->rect))
+					{
+						float tx = (*portal)->start.x;
+						float ty = (*portal)->start.y;
+
+						if (ty <= scr_height / 2.0f)ty = (*portal)->end.y;
+
+						if ((*portal)->get_type() == portals::warrior_portal)
+						{
+							for (int i = 0; i < 10; ++i)
+								vGoods.push_back(zombie::CREATURE::create(creature::warrior, tx, ty));
+
+							if (tx >= 350.0f)tx -= (20.0f + RandIt(10.0f, 20.0f));
+							else tx += (20.0f + RandIt(10.0f, 20.0f));
+						}
+						else
+						{
+							for (int i = 0; i < 10; ++i)
+								vGoods.push_back(zombie::CREATURE::create(creature::mage, tx, ty));
+
+							if (tx >= 350.0f)tx -= (20.0f + RandIt(10.0f, 20.0f));
+							else tx += (20.0f + RandIt(10.0f, 20.0f));
+
+							if (ty <= scr_height / 2.0f)vGoods.back()->path_info(vGoods.back()->center.x, sky);
+							else vGoods.back()->path_info(vGoods.back()->center.x, ground);
+						}
+
+						(*portal)->Release();
+						vPortals.erase(portal);
+						killed = true;
+						break;
+					}
+				}
+
+				if (killed)break;
+			}
+		}
+
 		///////////////////////////////////////////////////////
 	
 	
@@ -1267,6 +1354,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 		if (!vSands.empty())
 			for (int i = 0; i < vSands.size(); ++i)Draw->DrawBitmap(bmpSand, vSands[i]->rect);
+
+		if (!vPortals.empty())
+		{
+			for (int i = 0; i < vPortals.size(); ++i)
+			{
+				switch (vPortals[i]->get_type())
+				{
+				case portals::warrior_portal:
+					Draw->DrawBitmap(bmpEnergyField1, vPortals[i]->rect);
+					break;
+
+				case portals::mage_portal:
+					Draw->DrawBitmap(bmpEnergyField2, vPortals[i]->rect);
+					break;
+				}
+			}
+		}
 
 		if (nrmText && inactBrush && statBrush && txtBrush && hgltBrush && b1BckgBrush && b2BckgBrush && b3BckgBrush)
 		{
