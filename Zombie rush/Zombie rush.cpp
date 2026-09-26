@@ -62,7 +62,7 @@ D2D1_RECT_F b1Rect{ 20.0f, 10.0f, scr_width / 3.0f - 20.0f, 40.0f };
 D2D1_RECT_F b2Rect{ scr_width / 3.0f + 20.0f, 10.0f, scr_width * 2.0f / 3.0f - 20.0f , 40.0f };
 D2D1_RECT_F b3Rect{ scr_width * 2.0f / 3.0f + 20.0f, 10.0f, scr_width - 20.0f , 40.0f };
 
-D2D1_RECT_F b1TxtRect{ 50.0f, 15.0f, scr_width / 3.0f - 50.0f, 40.0f };
+D2D1_RECT_F b1TxtRect{ 35.0f, 15.0f, scr_width / 3.0f - 50.0f, 40.0f };
 D2D1_RECT_F b2TxtRect{ scr_width / 3.0f + 60.0f, 15.0f, scr_width * 2.0f / 3.0f - 20.0f , 40.0f };
 D2D1_RECT_F b3TxtRect{ scr_width * 2.0f / 3.0f + 50.0f, 15.0f, scr_width - 20.0f , 40.0f };
 
@@ -269,7 +269,7 @@ void InitGame()
 	wcscpy_s(current_player, L"TARLYO");
 	name_set = false;
 
-	distance = 10.0f;
+	distance = 300.0f;
 	castle_lifes = 250;
 	castle_active = false;
 	castle_demolished = false;
@@ -307,7 +307,7 @@ void InitGame()
 
 	for (float row = 0; row < 3.0f; ++row)
 	{
-		for (float col = 0; col < 7.0f; ++col)
+		for (float col = 0; col < 8.0f; ++col)
 		{
 			int ttype = RandIt(0, 2);
 
@@ -329,7 +329,35 @@ void InitGame()
 }
 void LevelUp()
 {
-	if (!level_skipped)score += (int)(10 * level);
+	Draw->BeginDraw();
+	Draw->DrawBitmap(logoLevel, FULL_SCREEN);
+	if (!level_skipped)
+	{
+		score += (int)(vGoods.size());
+		
+		wchar_t txt[40]{ L"БОНУС: " };
+		wchar_t add[5]{ L"\0" };
+		int size = 0;
+
+		wsprintf(add, L"%d", (int)(vGoods.size()));
+		wcscat_s(txt, add);
+		
+		for (int i = 0; i < 40; ++i)
+		{
+			if (txt[i] != '\0')++size;
+			else break;
+		}
+
+		if (bigText && hgltBrush)Draw->DrawTextW(txt, size, bigText, D2D1::RectF(150.0f, scr_height / 2.0f, scr_width,
+			scr_height), hgltBrush);
+	}
+	else if (bigText && hgltBrush)Draw->DrawTextW(L"ПРЕСКОЧЕНО НИВО !", 18, bigText, D2D1::RectF(150.0f, scr_height / 2.0f,
+		scr_width, scr_height), hgltBrush);
+	Draw->EndDraw();
+
+	if (sound)mciSendString(L"play .\\res\\snd\\levelup.wav", NULL, NULL, NULL);
+
+	Sleep(3000);
 
 	++level;
 	distance = 300.0f + 10.0f * level;
@@ -349,7 +377,7 @@ void LevelUp()
 
 	for (float row = 0; row < 3.0f + level; ++row)
 	{
-		for (float col = 0; col < 10.0f + level * 2.0f; ++col)
+		for (float col = 0; col < 10.0f + level; ++col)
 		{
 			good_x += 20.0f + RandIt(0.0f, 20.0f);
 			vGoods.push_back(zombie::CREATURE::create(creature::warrior, good_x, good_y));
@@ -361,12 +389,15 @@ void LevelUp()
 		good_y -= 40.0f;
 	}
 
+	if (!vEvils.empty())for (int i = 0; i < vEvils.size(); ++i)FreeMem(&vEvils[i]);
+	vEvils.clear();
+
 	float evil_x{ 150.0f + RandIt(0.0f, 20.0f) };
 	float evil_y{ sky + 5.0f };
 
-	for (float row = 0; row < 3.0f +level ; ++row)
+	for (float row = 0; row < 3.0f + level ; ++row)
 	{
-		for (float col = 0; col < 7.0f + level * 2.0f; ++col)
+		for (float col = 0; col < 8.0f + level; ++col)
 		{
 			int ttype = RandIt(0, 2);
 
@@ -379,9 +410,6 @@ void LevelUp()
 		evil_x = 150.0f + RandIt(0.0f, 20.0f);
 		evil_y += 30.0f;
 	}
-
-	if (!vEvils.empty())for (int i = 0; i < vEvils.size(); ++i)FreeMem(&vEvils[i]);
-	vEvils.clear();
 
 	for (float ty = -700.0f; ty <= 700.0f; ty += 700.0f)vSands.push_back(zombie::FIELD::create(ty));
 
@@ -1038,9 +1066,9 @@ void CreateResources()
 		if (iWriteFactory)
 		{
 			hr = iWriteFactory->CreateTextFormat(L"Segoe script", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_NORMAL,
-				DWRITE_FONT_STRETCH_NORMAL, 14.0f, L"", &nrmText);
+				DWRITE_FONT_STRETCH_NORMAL, 16.0f, L"", &nrmText);
 			hr = iWriteFactory->CreateTextFormat(L"Segoe script", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_NORMAL,
-				DWRITE_FONT_STRETCH_NORMAL, 32.0f, L"", &midText);
+				DWRITE_FONT_STRETCH_NORMAL, 24.0f, L"", &midText);
 			hr = iWriteFactory->CreateTextFormat(L"Segoe script", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_NORMAL,
 				DWRITE_FONT_STRETCH_NORMAL, 72.0f, L"", &bigText);
 			if (hr != S_OK)
@@ -1142,14 +1170,15 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 		}
 
-		if (vEvils.size() < 20 + (int)(level) && RandIt(0, 70) == 66)
+		if (vEvils.size() < 20 + (int)(level) && RandIt(0, 20) == 10)
 		{
 			float evil_x{ 150.0f + RandIt(0.0f, 300.0f) };
 			float evil_y{ sky + 5.0f };
 			int ttype = RandIt(0, 2);
 
 			vEvils.push_back(zombie::CREATURE::create(static_cast<creature>(ttype), evil_x, evil_y));
-			vEvils.back()->path_info(vEvils.back()->center.x, ground);
+			
+			vEvils.back()->path_info(vEvils.back()->center.x, sky);
 		}
 	
 		////////////////////////////////////////////////////////
@@ -1270,7 +1299,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			}
 		}
 	
-		if (vPortals.size() < 2 && RandIt(0, 100) == 33)
+		if (vPortals.size() < 2 && RandIt(0, 150) == 33)
 		{
 			zombie::PORTAL* temp{ zombie::PORTAL::create(static_cast<portals>(RandIt(0, 1)), RandIt(150.0f, 400.0f), -50.0f) };
 			bool ok = true;
@@ -1562,6 +1591,46 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 				Draw->DrawBitmap(bmpShot[frame], Resizer(bmpShot[frame], vShots[i]->start.x, vShots[i]->start.y));
 			}
+		}
+
+		if (nrmText && midText && hgltBrush && statBrush)
+		{
+			wchar_t stat_txt[200]{ L"владетел: " };
+			wchar_t add[5]{ L"\0" };
+			int size = 0;
+
+			wcscat_s(stat_txt, current_player);
+
+			wcscat_s(stat_txt, L", войници: ");
+			wsprintf(add, L"%d", (int)(vGoods.size()));
+			wcscat_s(stat_txt, add);
+
+			wcscat_s(stat_txt, L", резултат: ");
+			wsprintf(add, L"%d", score);
+			wcscat_s(stat_txt, add);
+
+			wcscat_s(stat_txt, L", ниво: ");
+			wsprintf(add, L"%d", (int)(level));
+			wcscat_s(stat_txt, add);
+
+			for (int i = 0; i < 200; ++i)
+			{
+				if (stat_txt[i] != '\0')++size;
+				else break;
+			}
+
+			Draw->DrawTextW(stat_txt, size, midText, D2D1::RectF(10.0f, ground + 2.0f, scr_width, scr_height), hgltBrush);
+	
+			swprintf_s(stat_txt, 200, L"остават: %.2f метра", distance * 10.0f);
+
+			size = 0;
+			for (int i = 0; i < 200; ++i)
+			{
+				if (stat_txt[i] != '\0')++size;
+				else break;
+			}
+
+			Draw->DrawTextW(stat_txt, size, nrmText, D2D1::RectF(400.0f, sky + 10.0f, scr_width, scr_height), statBrush);
 		}
 
 	// END DRAW ************************************
