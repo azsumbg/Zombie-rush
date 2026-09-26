@@ -62,7 +62,7 @@ D2D1_RECT_F b1Rect{ 20.0f, 10.0f, scr_width / 3.0f - 20.0f, 40.0f };
 D2D1_RECT_F b2Rect{ scr_width / 3.0f + 20.0f, 10.0f, scr_width * 2.0f / 3.0f - 20.0f , 40.0f };
 D2D1_RECT_F b3Rect{ scr_width * 2.0f / 3.0f + 20.0f, 10.0f, scr_width - 20.0f , 40.0f };
 
-D2D1_RECT_F b1TxtRect{ 35.0f, 15.0f, scr_width / 3.0f - 50.0f, 40.0f };
+D2D1_RECT_F b1TxtRect{ 40.0f, 15.0f, scr_width / 3.0f - 50.0f, 40.0f };
 D2D1_RECT_F b2TxtRect{ scr_width / 3.0f + 60.0f, 15.0f, scr_width * 2.0f / 3.0f - 20.0f , 40.0f };
 D2D1_RECT_F b3TxtRect{ scr_width * 2.0f / 3.0f + 50.0f, 15.0f, scr_width - 20.0f , 40.0f };
 
@@ -251,13 +251,73 @@ void ErrExit(int what)
 	std::remove(tmp_file);
 	exit(1);
 }
+BOOL CheckRecord()
+{
+	if (score < 1)return no_record;
 
+	int result{ 0 };
+	CheckFile(record_file, &result);
+
+	if (result == FILE_NOT_EXIST)
+	{
+		std::wofstream rec{ record_file };
+		rec << score << std::endl;
+		for (int i = 0; i < 16; ++i)rec << static_cast<int>(current_player[i]) << std::endl;
+		rec.close();
+
+		return first_record;
+	}
+	else
+	{
+		std::wifstream check(record_file);
+		check >> result;
+		check.close();
+	}
+	
+	if (score > result)
+	{
+		std::wofstream rec{ record_file };
+		rec << score << std::endl;
+		for (int i = 0; i < 16; ++i)rec << static_cast<int>(current_player[i]) << std::endl;
+		rec.close();
+
+		return record;
+	}
+
+	return no_record;
+}
 void GameOver()
 {
 	KillTimer(bHwnd, bTimer);
 
 	PlaySound(NULL, NULL, NULL);
 
+	switch (CheckRecord())
+	{
+	case no_record:
+		Draw->BeginDraw();
+		Draw->DrawBitmap(logoLoose, FULL_SCREEN);
+		Draw->EndDraw();
+		if (sound)PlaySound(L".\\res\\snd\\loose.wav", NULL, SND_SYNC);
+		else Sleep(3000);
+		break;
+
+	case first_record:
+		Draw->BeginDraw();
+		Draw->DrawBitmap(logoWin, FULL_SCREEN);
+		Draw->EndDraw();
+		if (sound)PlaySound(L".\\res\\snd\\win.wav", NULL, SND_SYNC);
+		else Sleep(3000);
+		break;
+
+	case record:
+		Draw->BeginDraw();
+		Draw->DrawBitmap(logoRecord, FULL_SCREEN);
+		Draw->EndDraw();
+		if (sound)PlaySound(L".\\res\\snd\\record.wav", NULL, SND_SYNC);
+		else Sleep(3000);
+		break;
+	}
 
 	bMsg.message = WM_QUIT;
 	bMsg.wParam = 0;
@@ -1068,7 +1128,7 @@ void CreateResources()
 			hr = iWriteFactory->CreateTextFormat(L"Segoe script", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_NORMAL,
 				DWRITE_FONT_STRETCH_NORMAL, 16.0f, L"", &nrmText);
 			hr = iWriteFactory->CreateTextFormat(L"Segoe script", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_NORMAL,
-				DWRITE_FONT_STRETCH_NORMAL, 24.0f, L"", &midText);
+				DWRITE_FONT_STRETCH_NORMAL, 32.0f, L"", &midText);
 			hr = iWriteFactory->CreateTextFormat(L"Segoe script", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_NORMAL,
 				DWRITE_FONT_STRETCH_NORMAL, 72.0f, L"", &bigText);
 			if (hr != S_OK)
@@ -1482,11 +1542,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			Draw->FillRoundedRectangle(D2D1::RoundedRect(b2Rect, 25.0f, 15.0f), b2BckgBrush);
 			Draw->FillRoundedRectangle(D2D1::RoundedRect(b3Rect, 25.0f, 15.0f), b3BckgBrush);
 
-			if (name_set)Draw->DrawTextW(L"ИМЕ НА ВЛАДЕТЕЛ", 16, nrmText, b1TxtRect, inactBrush);
+			if (name_set)Draw->DrawTextW(L"ИМЕ НА ИГРАЧ", 13, nrmText, b1TxtRect, inactBrush);
 			else
 			{
-				if (!b1Hglt)Draw->DrawTextW(L"ИМЕ НА ВЛАДЕТЕЛ", 16, nrmText, b1TxtRect, txtBrush);
-				else Draw->DrawTextW(L"ИМЕ НА ВЛАДЕТЕЛ", 16, nrmText, b1TxtRect, hgltBrush);
+				if (!b1Hglt)Draw->DrawTextW(L"ИМЕ НА ИГРАЧ", 13, nrmText, b1TxtRect, txtBrush);
+				else Draw->DrawTextW(L"ИМЕ НА ИГРАЧ", 13, nrmText, b1TxtRect, hgltBrush);
 			}
 			if (!b2Hglt)Draw->DrawTextW(L"ЗВУЦИ ON / OFF", 15, nrmText, b2TxtRect, txtBrush);
 			else Draw->DrawTextW(L"ЗВУЦИ ON / OFF", 15, nrmText, b2TxtRect, hgltBrush);
@@ -1637,6 +1697,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 		Draw->EndDraw();
 	
+		if (vGoods.empty())GameOver();
 	}
 
 	FreeResources();
