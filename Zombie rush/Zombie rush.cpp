@@ -78,7 +78,8 @@ bool name_set = false;
 
 bool castle_active = false;
 bool castle_demolished = false;
-D2D1_RECT_F CasteRect{};
+D2D1_RECT_F CastleRect{};
+D2D1_RECT_F ExplosionRect{};
 
 bool level_skipped = false;
 
@@ -268,7 +269,7 @@ void InitGame()
 	wcscpy_s(current_player, L"TARLYO");
 	name_set = false;
 
-	distance = 300.0f;
+	distance = 10.0f;
 	castle_lifes = 250;
 	castle_active = false;
 	castle_demolished = false;
@@ -474,9 +475,16 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPar
 		break;
 
 	case WM_TIMER:
-		if (pause)break;
-		--distance;
-		if (distance <= 0)LevelUp();
+		if (pause || castle_active)break;
+		distance -= (1.0f + RandIt(0.2f, 0.4f));
+		if (distance <= 0)
+		{
+			castle_active = true;
+			CastleRect.left = 150.0f + RandIt( 0.0f,300.0f );
+			CastleRect.top = 60.0f;
+			CastleRect.right = CastleRect.left + 150.0f;
+			CastleRect.bottom = CastleRect.top + 120.0f;
+		}
 		break;
 
 	case WM_SETCURSOR:
@@ -1094,7 +1102,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 	
 			continue;
 		}
-	
+		
 	/////////////////////////////////////////////////////////////
 	
 	// GAME ACTION *********************************************
@@ -1122,9 +1130,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 		if (!vGoods.empty())
 		{
 			for (int i = 0; i < vGoods.size(); ++i)vGoods[i]->move(level);
-
 		}
-		
 		
 		////////////////////////////////////////////////////// 
 
@@ -1241,7 +1247,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 				{
 					if (zombie::Intersect((*evil)->rect, (*shot)->rect))
 					{
-						(*evil)->lifes -= 10;
+						(*evil)->lifes -= 20;
 
 						(*shot)->Release();
 						vShots.erase(shot);
@@ -1315,21 +1321,28 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 						if ((*portal)->get_type() == portals::warrior_portal)
 						{
 							for (int i = 0; i < 10; ++i)
+							{
 								vGoods.push_back(zombie::CREATURE::create(creature::warrior, tx, ty));
 
-							if (tx >= 350.0f)tx -= (20.0f + RandIt(10.0f, 20.0f));
-							else tx += (20.0f + RandIt(10.0f, 20.0f));
+								if (tx >= 350.0f)tx -= (30.0f + RandIt(10.0f, 20.0f));
+								else tx += (30.0f + RandIt(10.0f, 20.0f));
+
+								if (ty <= scr_height / 2.0f)vGoods.back()->path_info(vGoods.back()->center.x, sky);
+								else vGoods.back()->path_info(vGoods.back()->center.x, ground);
+							}
 						}
 						else
 						{
 							for (int i = 0; i < 10; ++i)
+							{
 								vGoods.push_back(zombie::CREATURE::create(creature::mage, tx, ty));
 
-							if (tx >= 350.0f)tx -= (20.0f + RandIt(10.0f, 20.0f));
-							else tx += (20.0f + RandIt(10.0f, 20.0f));
+								if (tx >= 350.0f)tx -= (30.0f + RandIt(10.0f, 20.0f));
+								else tx += (30.0f + RandIt(10.0f, 20.0f));
 
-							if (ty <= scr_height / 2.0f)vGoods.back()->path_info(vGoods.back()->center.x, sky);
-							else vGoods.back()->path_info(vGoods.back()->center.x, ground);
+								if (ty <= scr_height / 2.0f)vGoods.back()->path_info(vGoods.back()->center.x, sky);
+								else vGoods.back()->path_info(vGoods.back()->center.x, ground);
+							}
 						}
 
 						(*portal)->Release();
@@ -1343,6 +1356,65 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			}
 		}
 
+		if (castle_active && !vGoods.empty())
+		{
+			for (int i = 0; i < vGoods.size(); ++i)
+			{
+				if (zombie::Intersect(CastleRect, vGoods[i]->rect))
+				{
+					int damage = vGoods[i]->attack();
+
+					if (damage > 0)
+					{
+						castle_lifes--;
+						if (castle_lifes <= 0)
+						{
+							if (sound)mciSendString(L"play .\\res\\snd\\explosion.wav", NULL, NULL, NULL);
+							
+							castle_demolished = true;
+							
+							ExplosionRect.left = CastleRect.left + 25.0f;
+							ExplosionRect.right = ExplosionRect.left + 100.0f;
+							ExplosionRect.top = CastleRect.top + 10.0f;
+							ExplosionRect.bottom = ExplosionRect.top + 114.0f;
+							
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		if (castle_active && !vShots.empty())
+		{
+			for (contlib::BAG<zombie::SHOT*>::iterator shot = vShots.begin(); shot < vShots.end(); ++shot)
+			{
+				if (zombie::Intersect(CastleRect, (*shot)->rect))
+				{
+					castle_lifes -= 20;
+
+					(*shot)->Release();
+					vShots.erase(shot);
+					
+					if (castle_lifes <= 0)
+					{
+						castle_demolished = true;
+
+						if (sound)mciSendString(L"play .\\res\\snd\\explosion.wav", NULL, NULL, NULL);
+
+						ExplosionRect.left = CastleRect.left + 25.0f;
+						ExplosionRect.right = ExplosionRect.left + 100.0f;
+						ExplosionRect.top = CastleRect.top + 10.0f;
+						ExplosionRect.bottom = ExplosionRect.top + 114.0f;
+						
+						break;
+					}
+
+					break;
+				}
+			}
+		}
+		
 		///////////////////////////////////////////////////////
 	
 	
@@ -1395,6 +1467,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 	//////////////////////////////////////////////////////////////////
 	
+		if (castle_active)
+		{
+			if (!castle_demolished)Draw->DrawBitmap(bmpCastle, CastleRect);
+			else
+			{
+				int frame = ExplosionFrame();
+				
+				if (frame >= 0)Draw->DrawBitmap(bmpExplosion[frame], Resizer(bmpExplosion[frame],
+					ExplosionRect.left, ExplosionRect.top));
+				else
+				{
+					Draw->EndDraw();
+					LevelUp();
+				}
+			}
+		}
+		
 		if (!vGoods.empty())
 		{
 			for (int i = 0; i < vGoods.size(); ++i)
