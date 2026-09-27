@@ -306,7 +306,11 @@ void GameOver()
 		Draw->BeginDraw();
 		Draw->DrawBitmap(logoWin, FULL_SCREEN);
 		Draw->EndDraw();
-		if (sound)PlaySound(L".\\res\\snd\\win.wav", NULL, SND_SYNC);
+		if (sound)
+		{
+			PlaySound(L".\\res\\snd\\win.wav", NULL, SND_SYNC);
+			Sleep(2000);
+		}
 		else Sleep(3000);
 		break;
 
@@ -478,6 +482,57 @@ void LevelUp()
 
 	if (!vPortals.empty())for (int i = 0; i < vPortals.size(); ++i)FreeMem(&vPortals[i]);
 	vPortals.clear();
+}
+void ShowRecord()
+{
+	int result{ 0 };
+	CheckFile(record_file, &result);
+
+	if (result == FILE_NOT_EXIST)
+	{
+		if (sound)mciSendString(L"play .\\res\\snd\\exclamation.wav", NULL, NULL, NULL);
+
+		MessageBox(bHwnd, L"Все още няма записан рекорд на играта !\n\nПостарай се повече !",
+			L"Липсва файл !", MB_OK | MB_APPLMODAL | MB_ICONEXCLAMATION);
+
+		return;
+	}
+
+	wchar_t txt[100]{ L"НАЙ - ВЕЛИК ВЛАДЕТЕЛ: " };
+	wchar_t saved_score[5]{ L"\0" };
+	wchar_t saved_player[16]{ L"\0" };
+
+	std::wifstream rec{ record_file };
+	rec >> result;
+	wsprintf(saved_score, L"%d", result);
+
+	for (int i = 0; i < 16; ++i)
+	{
+		int letter{ 0 };
+		rec >> letter;
+		saved_player[i] = static_cast<wchar_t>(letter);
+	}
+	rec.close();
+
+	wcscat_s(txt, saved_player);
+	wcscat_s(txt, L"\nСВЕТОВЕН РЕКОРД: ");
+	wcscat_s(txt, saved_score);
+
+	result = 0;
+
+	for (int i = 0; i < 100; ++i)
+	{
+		if (txt[i] != '\0')++result;
+		else break;
+	}
+
+	Draw->BeginDraw();
+	Draw->Clear(D2D1::ColorF(D2D1::ColorF::Khaki));
+	if (bigText && inactBrush)Draw->DrawTextW(txt, result, bigText, D2D1::RectF(50.0f, 100.0f, scr_width, scr_height), inactBrush);
+	Draw->EndDraw();
+	if (sound)mciSendString(L"play .\\res\\snd\\showrec.wav", NULL, NULL, NULL);
+	
+	Sleep(4000);
 }
 
 INT_PTR CALLBACK DlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
@@ -694,7 +749,11 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPar
 			SendMessage(hwnd, WM_CLOSE, NULL, NULL);
 			break;
 
-
+		case mHoF:
+			pause = true;
+			ShowRecord();
+			pause = false;
+			break;
 		}
 		break;
 
@@ -1128,7 +1187,7 @@ void CreateResources()
 			hr = iWriteFactory->CreateTextFormat(L"Segoe script", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_NORMAL,
 				DWRITE_FONT_STRETCH_NORMAL, 16.0f, L"", &nrmText);
 			hr = iWriteFactory->CreateTextFormat(L"Segoe script", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_NORMAL,
-				DWRITE_FONT_STRETCH_NORMAL, 32.0f, L"", &midText);
+				DWRITE_FONT_STRETCH_NORMAL, 24.0f, L"", &midText);
 			hr = iWriteFactory->CreateTextFormat(L"Segoe script", NULL, DWRITE_FONT_WEIGHT_EXTRA_BLACK, DWRITE_FONT_STYLE_NORMAL,
 				DWRITE_FONT_STRETCH_NORMAL, 72.0f, L"", &bigText);
 			if (hr != S_OK)
@@ -1359,7 +1418,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 			}
 		}
 	
-		if (vPortals.size() < 2 && RandIt(0, 150) == 33)
+		if (vPortals.size() < 2 && RandIt(0, 130) == 33)
 		{
 			zombie::PORTAL* temp{ zombie::PORTAL::create(static_cast<portals>(RandIt(0, 1)), RandIt(150.0f, 400.0f), -50.0f) };
 			bool ok = true;
@@ -1661,11 +1720,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
 			wcscat_s(stat_txt, current_player);
 
-			wcscat_s(stat_txt, L", войници: ");
+			wcscat_s(stat_txt, L", бойци: ");
 			wsprintf(add, L"%d", (int)(vGoods.size()));
 			wcscat_s(stat_txt, add);
 
-			wcscat_s(stat_txt, L", резултат: ");
+			wcscat_s(stat_txt, L", точки: ");
 			wsprintf(add, L"%d", score);
 			wcscat_s(stat_txt, add);
 
@@ -1679,7 +1738,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 				else break;
 			}
 
-			Draw->DrawTextW(stat_txt, size, midText, D2D1::RectF(10.0f, ground + 2.0f, scr_width, scr_height), hgltBrush);
+			Draw->DrawTextW(stat_txt, size, midText, D2D1::RectF(5.0f, ground + 2.0f, scr_width, scr_height), hgltBrush);
 	
 			swprintf_s(stat_txt, 200, L"остават: %.2f метра", distance * 10.0f);
 
