@@ -996,7 +996,53 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPar
 		}
 		break;
 
+	case WM_LBUTTONDOWN:
+		if (HIWORD(lParam) * scale_y <= 50)
+		{
+			if (LOWORD(lParam) * scale_x >= b1Rect.left && LOWORD(lParam) * scale_x <= b1Rect.right)
+			{
+				if (name_set)
+				{
+					if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+					break;
+				}
+			
+				if (sound)mciSendString(L"play .\\res\\snd\\select.wav", NULL, NULL, NULL);
+			
+				if (DialogBox(bIns, MAKEINTRESOURCE(IDD_PLAYER), hwnd, &DlgProc) == IDOK)name_set = true;
+			}
+			if (LOWORD(lParam) * scale_x >= b2Rect.left && LOWORD(lParam) * scale_x <= b2Rect.right)
+			{
+				if (sound)mciSendString(L"play .\\res\\snd\\select.wav", NULL, NULL, NULL);
 
+				if (sound)
+				{
+					PlaySound(NULL, NULL, NULL);
+					sound = false;
+					break;
+				}
+				else
+				{
+					PlaySound(sound_file, NULL, SND_ASYNC | SND_LOOP);
+					sound = true;
+					break;
+				}
+			}
+		}
+		else
+		{
+			if (!pause)
+			{
+				pause = true;
+				break;
+			}
+			else
+			{
+				pause = false;
+				break;
+			}
+		}
+		break;
 
 	default: return DefWindowProc(hwnd, ReceivedMsg, wParam, lParam);
 	}
